@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# App data - the SQLite database is generated and seeded at runtime
+data/*.db
+data/*.db-wal
+data/*.db-shm
+
+# Secrets / local overrides
+.env
+.streamlit/secrets.toml
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

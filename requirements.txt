@@ -1,0 +1,6 @@
+# FoodWaste360 - Python dependencies
+# sqlite3 is part of the Python standard library (no install needed).
+
+streamlit>=1.49
+pandas>=2.1
+plotly>=5.18
