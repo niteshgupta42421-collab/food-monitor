@@ -114,6 +114,7 @@ footprint.
 
 ```
 app.py                  # Entry point: config, login, sidebar, navigation
+streamlit_app.py        # Streamlit Community Cloud entry (runs app.py)
 database/
     database.py         # Data access layer (all queries parameterized)
     schema.py           # SQLite schema, password hashing, seeding
