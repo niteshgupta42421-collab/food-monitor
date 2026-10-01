@@ -19,3 +19,6 @@ data/*.db-shm
 Thumbs.db
 .idea/
 .vscode/
+
+# Debug screenshots captured during browser sessions
+streamlit_*.png
