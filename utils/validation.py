@@ -1,5 +1,5 @@
 """
-FoodWaste360 - Input validation helpers.
+MealFlow360 - Input validation helpers.
 
 Every function returns either None (input is fine) or a friendly error/warning
 string that can be shown directly in the UI with st.error / st.warning.
@@ -82,23 +82,32 @@ def waste_exceeds_prepared_warning(new_waste_total: float, prepared: float, food
     return None
 
 
-def production_consistency_warnings(prepared: float, served: float, consumed: float, food_name: str) -> list[str]:
-    """Return friendly warnings for unusual production numbers (never blocks saving)."""
+def flow_violation_warnings(flow_df) -> list[str]:
+    """
+    Warnings for foods where the recorded waste exceeds the prepared quantity,
+    so a derived flow step (available / served / consumed) would fall below
+    zero. Expects the columns produced by services.accounting.add_flow_columns.
+    """
     warnings = []
-    if prepared is not None and served is not None and served > prepared:
-        warnings.append(f"{food_name}: served quantity is higher than the prepared quantity.")
-    if served is not None and consumed is not None and consumed > served:
-        warnings.append(f"{food_name}: consumed quantity is higher than the served quantity.")
+    for _, row in flow_df.iterrows():
+        if row["available"] < 0:
+            warnings.append(
+                f"{row['food_name']}: the recorded kitchen waste ({row['kitchen']:,.1f} kg) is more "
+                f"than the prepared quantity ({row['prepared']:,.1f} kg) - the accounting flow "
+                "cannot go below zero. Please check the waste entries."
+            )
+        elif row["served"] < 0:
+            warnings.append(
+                f"{row['food_name']}: kitchen + serving waste ({row['kitchen'] + row['serving']:,.1f} kg) "
+                f"is more than the prepared quantity ({row['prepared']:,.1f} kg). Please check the "
+                "waste entries."
+            )
+        elif row["consumed"] < 0:
+            warnings.append(
+                f"{row['food_name']}: total recorded waste ({row['waste']:,.1f} kg) is more than the "
+                f"prepared quantity ({row['prepared']:,.1f} kg). Please check the waste entries."
+            )
     return warnings
-
-
-def validate_production_row(prepared, served, consumed, food_name: str) -> str | None:
-    """Validate one production row; returns an error message or None."""
-    for value, label in ((prepared, "Prepared"), (served, "Served"), (consumed, "Consumed")):
-        error = validate_non_negative(value, f"{food_name} - {label} quantity")
-        if error:
-            return error
-    return None
 
 
 def validate_plate_waste_input(customers, food_rows: list[tuple[str, float | None]]) -> str | None:

@@ -1,5 +1,5 @@
 """
-FoodWaste360 - Plate Waste page.
+MealFlow360 - Plate Waste page.
 
 Tab 1 - Plate Waste Analysis: customers served, per-food leftovers, the
 average plate waste per customer, and day/period summaries.

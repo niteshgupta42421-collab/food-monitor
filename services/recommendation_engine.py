@@ -1,5 +1,5 @@
 """
-FoodWaste360 - Recommendation engine ("Waste Detective" + "Smart Recommendations").
+MealFlow360 - Recommendation engine ("Waste Detective" + "Smart Recommendations").
 
 Rules of this module (spec sections 16 and 18):
   * Every statement is computed from the recorded data - no invented causes.
@@ -21,7 +21,7 @@ ATTENTION_LEVELS = {
     "kitchen_share_high_pct": 30,     # kitchen waste >= 30% of total recorded waste
     "serving_share_high_pct": 25,     # serving waste >= 25% of total recorded waste
     "plate_waste_per_customer_g": 250,  # average leftover per customer >= 250 g
-    "trend_change_points": 1.0,       # waste-rate move between half-periods (pct points)
+    "trend_change_points": 1.0,       # waste percentage move between half-periods (pct points)
     "repeat_pattern_min_days": 5,     # minimum days of data before pattern claims
     "repeat_pattern_share": 0.4,      # appears in top-3 waste foods on >= 40% of days
 }
@@ -30,7 +30,7 @@ ATTENTION_LEVELS = {
 # ---------------------------------------------------------------- helpers
 
 def _half_period_averages(daily):
-    """Average waste rate of the first and second half of the period."""
+    """Average waste percentage of the first and second half of the period."""
     recorded = daily[(daily["prepared"] > 0) | (daily["waste"] > 0)].reset_index(drop=True)
     if len(recorded) < ATTENTION_LEVELS["repeat_pattern_min_days"]:
         return None, None
@@ -101,11 +101,11 @@ def detect_patterns(start, end) -> list[dict]:
             "title": "Highest waste day",
             "detail": (
                 f"{worst['date']} recorded the highest total waste in this period: "
-                f"{fmt.format_kg(worst['waste'])} (waste rate {fmt.format_percentage(worst['waste_pct'])})."
+                f"{fmt.format_kg(worst['waste'])} (waste percentage {fmt.format_percentage(worst['waste_pct'])})."
             ),
         })
 
-    # Waste-rate trend (first half vs second half of the period)
+    # Waste-percentage trend (first half vs second half of the period)
     first_avg, second_avg = _half_period_averages(daily)
     if first_avg is not None and second_avg is not None:
         change = second_avg - first_avg
@@ -113,16 +113,16 @@ def detect_patterns(start, end) -> list[dict]:
             patterns.append({
                 "title": "Increasing waste trend",
                 "detail": (
-                    f"The average waste rate rose from {fmt.format_percentage(first_avg)} (first half of the period) "
-                    f"to {fmt.format_percentage(second_avg)} (second half)."
+                    f"The average waste percentage rose from {fmt.format_percentage(first_avg)} (first half of the "
+                    f"period) to {fmt.format_percentage(second_avg)} (second half)."
                 ),
             })
         elif -change >= ATTENTION_LEVELS["trend_change_points"]:
             patterns.append({
                 "title": "Decreasing waste trend",
                 "detail": (
-                    f"The average waste rate moved from {fmt.format_percentage(first_avg)} (first half of the period) "
-                    f"down to {fmt.format_percentage(second_avg)} (second half)."
+                    f"The average waste percentage moved from {fmt.format_percentage(first_avg)} (first half of the "
+                    f"period) down to {fmt.format_percentage(second_avg)} (second half)."
                 ),
             })
 
@@ -232,22 +232,22 @@ def generate_recommendations(start, end) -> list[dict]:
             ),
         })
 
-    # 5. Rising waste-rate trend.
+    # 5. Rising waste-percentage trend.
     first_avg, second_avg = _half_period_averages(daily)
     if first_avg is not None and second_avg is not None:
         change = second_avg - first_avg
         if change >= ATTENTION_LEVELS["trend_change_points"]:
             recommendations.append({
                 "observation": (
-                    f"The waste rate increased across the period: {fmt.format_percentage(first_avg)} in the first half "
-                    f"versus {fmt.format_percentage(second_avg)} in the second half."
+                    f"The waste percentage increased across the period: {fmt.format_percentage(first_avg)} in the "
+                    f"first half versus {fmt.format_percentage(second_avg)} in the second half."
                 ),
                 "recommendation": (
                     "Consider reviewing recent production quantities, batch scheduling and service "
                     "timings for the affected days."
                 ),
                 "basis": (
-                    f"Shown because the average waste rate rose by "
+                    f"Shown because the average waste percentage rose by "
                     f"{change:.2f} percentage points between the two halves of the period."
                 ),
             })

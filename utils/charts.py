@@ -1,5 +1,5 @@
 """
-FoodWaste360 - Plotly chart builders.
+MealFlow360 - Plotly chart builders.
 
 All charts share the same palette and layout so the app looks consistent.
 Each function returns a plotly Figure; pages render it with st.plotly_chart.

@@ -1,5 +1,5 @@
 """
-FoodWaste360 - Smart Recommendations page.
+MealFlow360 - Smart Recommendations page.
 
 Two sections:
   1. Waste Detective - observations computed from the recorded data

@@ -1,12 +1,13 @@
 """
-FoodWaste360 - Food Database page.
+MealFlow360 - Food Master page.
 
-Lists every food item with its cost and documented environmental factors.
-Administrators can edit costs and factors here; a factor can never be saved
+Every food item with its commercial details (selling price, portion size,
+low-stock threshold, production mode, active) and its documented environmental
+factors. Administrators can edit everything here; a factor can never be saved
 without a source (project rule).
 
-"Direct match" means the factor comes straight from the published dataset for
-that commodity; "proxy / composite" values are clearly labelled in the notes.
+The portion size converts sales into kilograms (quantity x portion size),
+keeping sales, inventory and waste on the same scale.
 """
 
 import streamlit as st
@@ -15,8 +16,9 @@ from database import database
 from utils import ui, validation
 
 ui.page_header(
-    "Food Inventory / Food Database",
-    "Manage food items, their estimated cost per kg, and their documented impact factors.",
+    "🗃️ Food Master",
+    "Every food with its selling price, portion size, cost and documented impact "
+    "factors. Sales, inventory and alerts all use these values.",
 )
 
 role = st.session_state.get("user", {}).get("role", "staff")
@@ -32,17 +34,27 @@ if foods.empty:
 st.markdown("##### All food items")
 table = foods.copy()
 table["is_estimated"] = table["is_estimated"].map({1: "Yes", 0: "No"})
+table["production_mode"] = table["production_mode"].map(
+    {"pre_prepared": "Pre-prepared", "made_to_order": "Made to order"}
+)
+table["active"] = table["active"].map({1: "✅ Active", 0: "— Inactive"})
 table = table.rename(columns={
     "food_name": "Food", "category": "Category", "unit": "Unit", "cost_per_kg": "Cost (₹/kg)",
+    "selling_price": "Selling price (₹)", "portion_size_g": "Portion (g)",
+    "low_stock_threshold": "Low-stock ≤", "production_mode": "Mode", "active": "Active",
     "co2_factor": "CO2e (kg/kg)", "water_factor": "Water (L/kg)", "factor_source": "Factor source",
     "factor_reference": "Reference", "factor_date": "Date/version", "is_estimated": "Estimated?",
     "notes": "Notes", "id": "ID",
 })
 st.dataframe(
     table[[
-        "Food", "Category", "Cost (₹/kg)", "CO2e (kg/kg)", "Water (L/kg)",
-        "Estimated?", "Factor source", "Date/version", "Notes",
-    ]].style.format({"Cost (₹/kg)": "₹{:,.2f}", "CO2e (kg/kg)": "{:,.2f}", "Water (L/kg)": "{:,.1f}"}),
+        "Food", "Category", "Unit", "Selling price (₹)", "Portion (g)", "Low-stock ≤",
+        "Mode", "Active", "Cost (₹/kg)", "CO2e (kg/kg)", "Water (L/kg)",
+        "Estimated?", "Factor source", "Notes",
+    ]].style.format({
+        "Selling price (₹)": "₹{:,.2f}", "Cost (₹/kg)": "₹{:,.2f}", "Portion (g)": "{:,.0f}",
+        "CO2e (kg/kg)": "{:,.2f}", "Water (L/kg)": "{:,.1f}",
+    }),
     width="stretch",
     hide_index=True,
 )
@@ -52,7 +64,8 @@ st.caption(
     "published in Science (reference year 2010), processed by Our World in Data. "
     "Full references are stored per food and shown in the Impact Calculator's "
     "Methodology & Sources section. Costs are your organization's own estimates and "
-    "can be edited at any time."
+    "can be edited at any time. Selling prices, portion sizes and low-stock thresholds "
+    "are your commercial data: the portion size converts sales into kilograms."
 )
 
 if not is_admin:
@@ -73,6 +86,22 @@ with edit_col:
         col_a, col_b = st.columns(2)
         with col_a:
             new_category = st.text_input("Category", value=selected["category"] or "")
+            new_unit = st.text_input("Selling unit", value=selected["unit"] or "portion",
+                                     help="How this food is sold: plate, bowl, piece, glass, slice…")
+            new_selling_price = st.number_input(
+                "Selling price per unit (₹)", min_value=0.0, step=5.0,
+                value=float(selected["selling_price"]), format="%.2f",
+            )
+            new_portion = st.number_input(
+                "Portion size (g per unit)", min_value=0.0, step=10.0,
+                value=float(selected["portion_size_g"]), format="%.0f",
+                help="Used to convert sales into kilograms. Example: 250 g per plate.",
+            )
+            new_threshold = st.number_input(
+                "Low-stock alert threshold (units)", min_value=0.0, step=1.0,
+                value=float(selected["low_stock_threshold"]), format="%.0f",
+                help="Inventory turns 🟡 when the remaining units fall to this number.",
+            )
             new_cost = st.number_input("Estimated cost per kg (₹)", min_value=0.0, step=1.0,
                                        value=float(selected["cost_per_kg"]), format="%.2f")
             new_co2 = st.number_input(
@@ -91,6 +120,13 @@ with edit_col:
             new_reference = st.text_input("Reference (URL/citation)", value=selected["factor_reference"] or "")
             new_date = st.text_input("Date/version", value=selected["factor_date"] or "")
             new_estimated = st.checkbox("This factor is an estimate/proxy", value=bool(selected["is_estimated"]))
+            new_mode = st.selectbox(
+                "Production mode", ["pre_prepared", "made_to_order"],
+                index=0 if selected["production_mode"] != "made_to_order" else 1,
+                format_func=lambda key: {"pre_prepared": "Pre-prepared (cooked before service)",
+                                         "made_to_order": "Made to order"}[key],
+            )
+            new_active = st.checkbox("Active (shown in entry forms)", value=bool(selected["active"]))
             new_notes = st.text_area("Notes", value=selected["notes"] or "", height=80)
 
         save_clicked = st.form_submit_button("💾 Save changes", type="primary")
@@ -101,10 +137,21 @@ with edit_col:
         error = validation.validate_factor_fields(co2_value, water_value, new_source)
         if error:
             st.error(error + " Factors must always carry a documented source.")
+        elif new_selling_price > 0 and new_portion <= 0:
+            st.error("A portion size is required when a selling price is set "
+                     "(sales are converted to kg with it).")
+        elif not new_unit.strip():
+            st.error("Please enter the selling unit (e.g. plate, bowl, piece).")
         else:
             database.update_food_item(
                 int(selected["id"]),
                 category=new_category,
+                unit=new_unit.strip(),
+                selling_price=float(new_selling_price),
+                portion_size_g=float(new_portion),
+                low_stock_threshold=float(new_threshold),
+                production_mode=new_mode,
+                active=1 if new_active else 0,
                 cost_per_kg=float(new_cost),
                 co2_factor=co2_value,
                 water_factor=water_value,
@@ -122,8 +169,13 @@ with preview_col:
     st.markdown(
         f"""
         <div class="fw-card">
-            <div class="fw-label">Factor details</div>
+            <div class="fw-label">Commercial &amp; factor details</div>
             <div class="fw-sub" style="margin-top:8px;">
+                <b>Selling price:</b> ₹{selected['selling_price']:,.2f} per {selected['unit']}<br>
+                <b>Portion size:</b> {selected['portion_size_g']:,.0f} g<br>
+                <b>Low-stock threshold:</b> {selected['low_stock_threshold']:,.0f} unit(s)<br>
+                <b>Production mode:</b> {'Made to order' if selected['production_mode'] == 'made_to_order' else 'Pre-prepared'}<br>
+                <b>Active:</b> {'Yes' if selected['active'] else 'No'}<br>
                 <b>Source:</b> {selected['factor_source'] or '—'}<br>
                 <b>Reference:</b> {selected['factor_reference'] or '—'}<br>
                 <b>Date/version:</b> {selected['factor_date'] or '—'}<br>
@@ -140,6 +192,19 @@ with preview_col:
     with st.form("add_food_form"):
         add_name = st.text_input("Food name *")
         add_category = st.text_input("Category")
+        add_unit = st.text_input("Selling unit", value="portion",
+                                 help="plate, bowl, piece, glass, slice…")
+        add_selling_price = st.number_input("Selling price per unit (₹)", min_value=0.0, step=5.0,
+                                            value=0.0, format="%.2f")
+        add_portion = st.number_input("Portion size (g per unit)", min_value=0.0, step=10.0,
+                                      value=0.0, format="%.0f")
+        add_threshold = st.number_input("Low-stock alert threshold (units)", min_value=0.0,
+                                        step=1.0, value=0.0, format="%.0f")
+        add_mode = st.selectbox(
+            "Production mode", ["pre_prepared", "made_to_order"],
+            format_func=lambda key: {"pre_prepared": "Pre-prepared (cooked before service)",
+                                     "made_to_order": "Made to order"}[key],
+        )
         add_cost = st.number_input("Cost per kg (₹)", min_value=0.0, step=1.0, value=0.0, format="%.2f")
         add_co2 = st.number_input("CO2e factor (kg/kg)", min_value=0.0, step=0.01, value=0.0, format="%.2f")
         add_water = st.number_input("Water factor (L/kg)", min_value=0.0, step=1.0, value=0.0, format="%.1f")
@@ -155,14 +220,19 @@ with preview_col:
         water_value = float(add_water) if add_water > 0 else None
         if not error:
             error = validation.validate_factor_fields(co2_value, water_value, add_source)
+        if not error and add_selling_price > 0 and add_portion <= 0:
+            error = "A portion size is required when a selling price is set (sales are converted to kg with it)."
         if error:
             st.error(error)
         else:
             try:
                 database.add_food_item(
-                    food_name=add_name, category=add_category, cost_per_kg=float(add_cost),
-                    co2_factor=co2_value, water_factor=water_value, factor_source=add_source,
-                    factor_reference=add_reference, is_estimated=1 if add_estimated else 0,
+                    food_name=add_name, category=add_category, unit=add_unit,
+                    cost_per_kg=float(add_cost), co2_factor=co2_value, water_factor=water_value,
+                    factor_source=add_source, factor_reference=add_reference,
+                    is_estimated=1 if add_estimated else 0,
+                    selling_price=float(add_selling_price), portion_size_g=float(add_portion),
+                    low_stock_threshold=float(add_threshold), production_mode=add_mode,
                     notes=add_notes,
                 )
                 st.toast(f"Added '{add_name}'.")
@@ -172,7 +242,10 @@ with preview_col:
 
     st.markdown("---")
     st.markdown("**Delete a food item**")
-    st.caption("A food item can only be deleted when no production, waste or plate records reference it.")
+    st.caption(
+        "A food item can only be deleted when no production, waste, plate-waste, sales "
+        "or remaining-food records reference it."
+    )
     delete_name = st.selectbox("Food to delete", foods["food_name"].tolist(), key="delete_food_select")
     delete_id = int(foods[foods["food_name"] == delete_name]["id"].iloc[0])
     usage = database.food_item_usage_count(delete_id)

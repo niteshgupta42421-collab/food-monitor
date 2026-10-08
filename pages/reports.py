@@ -1,10 +1,12 @@
 """
-FoodWaste360 - Reports page.
+MealFlow360 - Reports page.
 
 Generates a period summary report containing (spec section 20):
-date range, prepared, wasted, waste percentage, food-wise waste, the three
-waste categories, estimated financial impact, estimated CO2e, estimated food
-water footprint, plate-washing water, key observations and recommendations.
+date range, the full accounting flow (prepared, available for service,
+served, consumed, the three waste categories, waste percentage and the
+accounting check), food-wise waste, estimated financial impact, estimated
+CO2e, estimated food water footprint, plate-washing water, key observations
+and recommendations.
 
 Export: CSV download of the full report and of the food-wise table.
 (PDF export is a deliberately marked future placeholder - not implemented.)
@@ -43,13 +45,16 @@ row = st.columns(4)
 with row[0]:
     ui.metric_card("Food prepared", fmt.format_kg(totals["prepared"]), "Measured", "measured")
 with row[1]:
-    ui.metric_card("Food wasted", fmt.format_kg(totals["waste"]), "Measured", "measured")
+    ui.metric_card("Food available for service", fmt.format_kg(totals["available"]),
+                   "Prepared − kitchen waste", "calculated")
 with row[2]:
-    ui.metric_card("Waste percentage", fmt.format_percentage(totals["waste_pct"]), "Waste ÷ prepared × 100", "calculated")
+    ui.metric_card("Food served", fmt.format_kg(totals["served"]),
+                   "Available − serving waste", "calculated")
 with row[3]:
-    ui.metric_card("Reporting period", ui.range_label(start, end), f"{totals['days_with_data']} days with data", None)
+    ui.metric_card("Food consumed", fmt.format_kg(totals["consumed"]),
+                   "Served − plate waste", "calculated")
 
-row = st.columns(4)
+row = st.columns(5)
 with row[0]:
     ui.metric_card("Kitchen waste", fmt.format_kg(totals["kitchen"]), "Measured", "measured")
 with row[1]:
@@ -58,7 +63,22 @@ with row[2]:
     ui.metric_card("Plate waste", fmt.format_kg(totals["plate"]),
                    f"{fmt.format_grams(plate['avg_per_customer_g'])} per customer", "measured")
 with row[3]:
+    ui.metric_card("Total waste", fmt.format_kg(totals["waste"]),
+                   "Kitchen + serving + plate", "calculated")
+with row[4]:
+    ui.metric_card("Waste percentage", fmt.format_percentage(totals["waste_pct"]),
+                   "Total waste ÷ prepared × 100", "calculated")
+
+row = st.columns(4)
+with row[0]:
     ui.metric_card("Customers served", fmt.format_number(plate["total_customers"]), "Measured", "measured")
+with row[1]:
+    ui.metric_card("Average plate waste per customer", fmt.format_grams(plate["avg_per_customer_g"]),
+                   "Plate waste ÷ customers served", "calculated")
+with row[2]:
+    ui.metric_card("Days with data", str(totals["days_with_data"]), "Days with prepared or waste records", None)
+with row[3]:
+    ui.metric_card("Reporting period", ui.range_label(start, end), "Selected in the sidebar", None)
 
 row = st.columns(4)
 with row[0]:
@@ -126,6 +146,7 @@ report_lines = [
     ("Report", "Reporting period", f"{start} to {end}"),
     ("Report", "Days with data", str(totals["days_with_data"])),
     ("Production", "Food prepared (kg)", f"{totals['prepared']:.1f}"),
+    ("Production", "Food available for service (kg)", f"{totals['available']:.1f}"),
     ("Production", "Food served (kg)", f"{totals['served']:.1f}"),
     ("Production", "Food consumed (kg)", f"{totals['consumed']:.1f}"),
     ("Waste", "Kitchen waste (kg)", f"{totals['kitchen']:.1f}"),
@@ -133,6 +154,9 @@ report_lines = [
     ("Waste", "Plate waste (kg)", f"{totals['plate']:.1f}"),
     ("Waste", "Total waste (kg)", f"{totals['waste']:.1f}"),
     ("Waste", "Waste percentage (%)", f"{totals['waste_pct']:.2f}"),
+    ("Accounting check", "Kitchen + serving + plate + consumed (kg)",
+     f"{totals['kitchen'] + totals['serving'] + totals['plate'] + totals['consumed']:.1f}"),
+    ("Accounting check", "Unaccounted / measurement difference (kg)", f"{totals['unaccounted']:.1f}"),
     ("Plate waste", "Customers served", str(plate["total_customers"])),
     ("Plate waste", "Average per customer (g)", f"{plate['avg_per_customer_g']:.1f}"),
     ("Impact (estimated)", "Food value lost (INR)", f"{impact['value_lost']:.0f}"),
@@ -155,7 +179,7 @@ with export_col:
     st.download_button(
         "⬇️ Download full report (CSV)",
         data=report_df.to_csv(index=False).encode("utf-8"),
-        file_name=f"foodwaste360_report_{start}_{end}.csv",
+        file_name=f"mealflow360_report_{start}_{end}.csv",
         mime="text/csv",
         width="stretch",
     )
@@ -166,7 +190,7 @@ with food_export_col:
         st.download_button(
             "⬇️ Download food-wise table (CSV)",
             data=food_table.to_csv(index=False).encode("utf-8"),
-            file_name=f"foodwaste360_foodwise_{start}_{end}.csv",
+            file_name=f"mealflow360_foodwise_{start}_{end}.csv",
             mime="text/csv",
             width="stretch",
         )

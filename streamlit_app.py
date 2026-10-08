@@ -1,5 +1,5 @@
 """
-FoodWaste360 - Streamlit Community Cloud entry point.
+MealFlow360 - Streamlit Community Cloud entry point.
 
 Streamlit Community Cloud defaults the "Main file path" to streamlit_app.py.
 This thin wrapper simply runs the real application in app.py so both names

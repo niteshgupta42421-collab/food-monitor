@@ -1,4 +1,4 @@
-# FoodWaste360 - Python dependencies
+# MealFlow360 - Python dependencies
 # sqlite3 is part of the Python standard library (no install needed).
 
 streamlit>=1.49

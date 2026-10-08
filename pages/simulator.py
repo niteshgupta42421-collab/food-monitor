@@ -1,5 +1,5 @@
 """
-FoodWaste360 - What-If Simulator page.
+MealFlow360 - What-If Simulator page.
 
 Simulate operational changes and compare the current scenario with a
 simulated one. Every result here is labelled SIMULATED - a scenario estimate
@@ -30,9 +30,9 @@ if calculations.period_totals(start, end)["days_with_data"] == 0:
 
 SCENARIOS = [
     "Reduce / increase production of one food",
-    "Change plate waste rate (serving-size effect)",
+    "Change plate waste (serving-size effect)",
     "Change customer count",
-    "Set a target waste rate",
+    "Set a target waste percentage",
 ]
 scenario = st.radio("Choose a scenario", SCENARIOS, horizontal=False)
 
@@ -65,12 +65,12 @@ elif scenario == SCENARIOS[2]:
     if st.button("Run simulation", type="primary"):
         rows, meta = simulator.scenario_customers_change(float(pct), start, end)
 
-else:  # target waste rate
+else:  # target waste percentage
     totals = calculations.period_totals(start, end)
     target = st.slider(
-        "Target waste rate (% of prepared food)", min_value=0.0, max_value=30.0,
+        "Target waste percentage (% of prepared food)", min_value=0.0, max_value=30.0,
         value=round(max(totals["waste_pct"] - 2, 0.0), 1), step=0.5,
-        help=f"Current period waste rate: {fmt.format_percentage(totals['waste_pct'])}",
+        help=f"Current period waste percentage: {fmt.format_percentage(totals['waste_pct'])}",
     )
     if st.button("Run simulation", type="primary"):
         rows, meta = simulator.scenario_target_waste_rate(float(target), start, end)

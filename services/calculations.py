@@ -1,37 +1,41 @@
 """
-FoodWaste360 - Core calculations.
+MealFlow360 - Core calculations.
 
 Turns raw database rows into the aggregate tables used by the dashboard,
-analytics, impact and report pages. All outputs here are CALCULATED values
-(derived mathematically from MEASURED entries by the organization).
+analytics, impact and report pages. Every quantity follows the single
+accounting model in services/accounting.py: prepared and the three waste
+categories are MEASURED entries; available / served / consumed and the
+waste percentage are CALCULATED from them - never entered independently.
 """
 
 import pandas as pd
 
 from database import database
+from services import accounting
 from utils.formatting import safe_div
 
 WASTE_TYPES = ("kitchen", "serving", "plate")
 
+PRODUCTION_COLUMNS = [
+    "food_id", "food_name", "prepared", "kitchen", "serving", "plate",
+    "available", "served", "consumed", "waste",
+]
+
 
 def daily_aggregates(start, end) -> pd.DataFrame:
     """
-    One row per calendar day in the range with prepared / served / consumed
-    quantities, waste totals per category and the waste percentage.
+    One row per calendar day in the range with the full accounting flow:
+    prepared and kitchen / serving / plate waste (measured) plus the derived
+    available, served, consumed, total waste, waste percentage and
+    unaccounted difference.
     """
     days = pd.date_range(start, end, freq="D").strftime("%Y-%m-%d")
     result = pd.DataFrame(index=pd.Index(days, name="date"))
 
     production = database.get_production_range(start, end)
     if not production.empty:
-        prod_daily = production.groupby("date")[
-            ["quantity_prepared", "quantity_served", "quantity_consumed"]
-        ].sum()
-        prod_daily = prod_daily.rename(columns={
-            "quantity_prepared": "prepared",
-            "quantity_served": "served",
-            "quantity_consumed": "consumed",
-        })
+        prod_daily = production.groupby("date")[["quantity_prepared"]].sum()
+        prod_daily = prod_daily.rename(columns={"quantity_prepared": "prepared"})
         result = result.join(prod_daily, how="left")
 
     waste = database.get_waste_range(start, end)
@@ -42,14 +46,14 @@ def daily_aggregates(start, end) -> pd.DataFrame:
                 waste_daily[waste_type] = 0.0
         result = result.join(waste_daily[list(WASTE_TYPES)], how="left")
 
-    for column in ("prepared", "served", "consumed", "kitchen", "serving", "plate"):
+    for column in ("prepared", "kitchen", "serving", "plate"):
         if column not in result.columns:
             result[column] = 0.0
     result = result.fillna(0.0)
 
-    result["waste"] = result["kitchen"] + result["serving"] + result["plate"]
-    # Waste % = total waste / total prepared x 100 (spec section 9). Guarded for zero.
-    result["waste_pct"] = (result["waste"] / result["prepared"] * 100).where(result["prepared"] > 0, 0.0)
+    # Every derived column (available / served / consumed / waste / waste_pct /
+    # unaccounted) comes from the single accounting model.
+    result = accounting.add_flow_columns(result)
 
     return result.reset_index()
 
@@ -57,34 +61,44 @@ def daily_aggregates(start, end) -> pd.DataFrame:
 def period_totals(start, end) -> dict:
     """Headline totals for a period (used by dashboard, impact and reports)."""
     daily = daily_aggregates(start, end)
-    prepared = float(daily["prepared"].sum())
-    waste_total = float(daily["waste"].sum())
-    return {
-        "prepared": prepared,
-        "served": float(daily["served"].sum()),
-        "consumed": float(daily["consumed"].sum()),
-        "waste": waste_total,
-        "kitchen": float(daily["kitchen"].sum()),
-        "serving": float(daily["serving"].sum()),
-        "plate": float(daily["plate"].sum()),
-        "waste_pct": safe_div(waste_total, prepared) * 100,
-        "days_with_data": int(((daily["prepared"] > 0) | (daily["waste"] > 0)).sum()),
-    }
+    totals = accounting.flow_totals(
+        prepared=float(daily["prepared"].sum()),
+        kitchen=float(daily["kitchen"].sum()),
+        serving=float(daily["serving"].sum()),
+        plate=float(daily["plate"].sum()),
+    )
+    totals["days_with_data"] = int(((daily["prepared"] > 0) | (daily["waste"] > 0)).sum())
+    return totals
 
 
 def production_by_food(start, end) -> pd.DataFrame:
-    """Prepared / served / consumed totals per food for the period."""
+    """
+    Per-food flow for the period: the prepared quantity (measured) plus the
+    derived kitchen / serving / plate waste, available, served, consumed and
+    total waste - all from the single accounting model.
+    """
     production = database.get_production_range(start, end)
     if production.empty:
-        return pd.DataFrame(columns=["food_id", "food_name", "prepared", "served", "consumed"])
-    grouped = production.groupby(["food_id", "food_name"])[
-        ["quantity_prepared", "quantity_served", "quantity_consumed"]
-    ].sum().reset_index()
-    return grouped.rename(columns={
-        "quantity_prepared": "prepared",
-        "quantity_served": "served",
-        "quantity_consumed": "consumed",
-    }).sort_values("prepared", ascending=False)
+        return pd.DataFrame(columns=PRODUCTION_COLUMNS)
+
+    per_food = production.groupby(["food_id", "food_name"])["quantity_prepared"].sum().reset_index()
+    per_food = per_food.rename(columns={"quantity_prepared": "prepared"})
+
+    waste = database.get_waste_range(start, end)
+    if not waste.empty:
+        waste_per_food = waste.groupby(["food_id", "waste_type"])["quantity"].sum().unstack(fill_value=0.0)
+        for waste_type in WASTE_TYPES:
+            if waste_type not in waste_per_food.columns:
+                waste_per_food[waste_type] = 0.0
+        waste_per_food = waste_per_food[list(WASTE_TYPES)].reset_index()
+        per_food = per_food.merge(waste_per_food, on="food_id", how="left")
+    for waste_type in WASTE_TYPES:
+        if waste_type not in per_food.columns:
+            per_food[waste_type] = 0.0
+    per_food = per_food.fillna(0.0)
+
+    per_food = accounting.add_flow_columns(per_food)
+    return per_food[PRODUCTION_COLUMNS].sort_values("prepared", ascending=False).reset_index(drop=True)
 
 
 def waste_by_food(start, end) -> pd.DataFrame:
@@ -105,7 +119,6 @@ def waste_by_food(start, end) -> pd.DataFrame:
         if waste_type not in per_food.columns:
             per_food[waste_type] = 0.0
     per_food = per_food[list(WASTE_TYPES)].reset_index()
-    per_food["waste"] = per_food["kitchen"] + per_food["serving"] + per_food["plate"]
 
     production = production_by_food(start, end)
     if not production.empty:
@@ -115,10 +128,9 @@ def waste_by_food(start, end) -> pd.DataFrame:
     else:
         per_food["prepared"] = None
 
-    # Waste % per food uses the food's own prepared quantity as the base.
-    per_food["waste_pct_of_prepared"] = (
-        per_food["waste"] / per_food["prepared"] * 100
-    ).where(per_food["prepared"].fillna(0) > 0)
+    # Total waste and the per-food waste percentage follow the single
+    # accounting model (same definitions as the period-level numbers).
+    per_food = accounting.add_waste_columns(per_food)
 
     total_waste = float(per_food["waste"].sum())
     if total_waste > 0:
@@ -136,7 +148,7 @@ def waste_totals_by_type(start, end) -> dict:
         return {"kitchen": 0.0, "serving": 0.0, "plate": 0.0, "total": 0.0}
     grouped = waste.groupby("waste_type")["quantity"].sum()
     totals = {waste_type: float(grouped.get(waste_type, 0.0)) for waste_type in WASTE_TYPES}
-    totals["total"] = sum(totals.values())
+    totals["total"] = accounting.total_waste(totals["kitchen"], totals["serving"], totals["plate"])
     return totals
 
 

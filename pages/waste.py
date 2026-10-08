@@ -1,5 +1,5 @@
 """
-FoodWaste360 - Waste Tracking page.
+MealFlow360 - Waste Tracking page.
 
 Staff record kitchen waste (overproduction, spoilage, ...) and serving waste
 (left at the counter). Plate waste is recorded on the Plate Waste page so the

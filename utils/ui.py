@@ -1,9 +1,10 @@
 """
-FoodWaste360 - Shared UI components.
+MealFlow360 - Shared UI components.
 
-Contains the global CSS, dashboard cards, data-type chips (Measured /
-Calculated / Estimated / Simulated as required by section 25), the sidebar
-brand block and the global date-range selector.
+Contains the global CSS (driven by the theme variables injected in
+utils/theme.py), dashboard cards, data-type chips (Measured / Calculated /
+Estimated / Simulated), the sidebar brand block and the global date-range
+selector.
 """
 
 from datetime import date, timedelta
@@ -30,35 +31,35 @@ _CHIP_LABEL = {
 
 
 def inject_global_css() -> None:
-    """Apply the app-wide stylesheet (call once per page run)."""
+    """Apply the app-wide stylesheet (call once per page run, after theme.apply_css)."""
     st.markdown(
         """
         <style>
         .fw-card {
-            background: #FFFFFF;
-            border: 1px solid #E3EBE6;
+            background: var(--fw-card);
+            border: 1px solid var(--fw-border);
             border-radius: 14px;
             padding: 16px 18px;
-            box-shadow: 0 1px 2px rgba(16, 42, 30, 0.04);
+            box-shadow: 0 1px 2px rgba(16, 42, 30, 0.05);
             height: 100%;
         }
         .fw-card .fw-label {
             font-size: 0.76rem;
             letter-spacing: 0.05em;
             text-transform: uppercase;
-            color: #6B7F74;
+            color: var(--fw-muted);
             font-weight: 700;
         }
         .fw-card .fw-value {
             font-size: 1.5rem;
             font-weight: 750;
-            color: #12291E;
+            color: var(--fw-text);
             margin-top: 6px;
             line-height: 1.2;
         }
         .fw-card .fw-sub {
             font-size: 0.79rem;
-            color: #7B8E84;
+            color: var(--fw-muted);
             margin-top: 5px;
         }
         .fw-chip {
@@ -71,14 +72,14 @@ def inject_global_css() -> None:
             vertical-align: middle;
             margin-left: 6px;
         }
-        .fw-chip-measured   { background: #E3F4EA; color: #1B8A5A; }
-        .fw-chip-calculated { background: #E4EFFB; color: #2368B1; }
-        .fw-chip-estimated  { background: #FCF0DC; color: #B26A00; }
-        .fw-chip-simulated  { background: #EFE7FB; color: #6B3FA0; }
+        .fw-chip-measured   { background: var(--fw-chip_measured_bg); color: var(--fw-chip_measured_fg); }
+        .fw-chip-calculated { background: var(--fw-chip_calculated_bg); color: var(--fw-chip_calculated_fg); }
+        .fw-chip-estimated  { background: var(--fw-chip_estimated_bg); color: var(--fw-chip_estimated_fg); }
+        .fw-chip-simulated  { background: var(--fw-chip_simulated_bg); color: var(--fw-chip_simulated_fg); }
 
         .fw-flow {
-            background: #FFFFFF;
-            border: 1px solid #E3EBE6;
+            background: var(--fw-card);
+            border: 1px solid var(--fw-border);
             border-radius: 14px;
             padding: 14px 16px;
         }
@@ -88,11 +89,11 @@ def inject_global_css() -> None:
             gap: 10px;
             padding: 7px 12px;
             border-radius: 10px;
-            background: #F4F9F6;
+            background: var(--fw-flow_step_bg);
         }
         .fw-flow-arrow {
             text-align: center;
-            color: #1B8A5A;
+            color: var(--fw-accent);
             line-height: 1.4;
             padding: 1px 0;
         }
@@ -100,30 +101,50 @@ def inject_global_css() -> None:
             font-size: 0.76rem;
             letter-spacing: 0.05em;
             text-transform: uppercase;
-            color: #6B7F74;
+            color: var(--fw-muted);
             font-weight: 700;
         }
         .fw-flow-value {
             margin-left: auto;
             font-weight: 750;
-            color: #12291E;
+            color: var(--fw-text);
             font-size: 1.02rem;
         }
         .fw-flow-split {
             margin-top: 8px;
             padding-top: 8px;
-            border-top: 1px dashed #D6E5DB;
+            border-top: 1px dashed var(--fw-border);
             text-align: center;
-            color: #486257;
+            color: var(--fw-text_soft);
             font-size: 0.85rem;
         }
+        .fw-flow-branch {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 4px 12px 4px 30px;
+            color: var(--fw-muted);
+            font-size: 0.85rem;
+        }
+        .fw-flow-branch .fw-flow-value {
+            margin-left: auto;
+            font-weight: 650;
+            color: var(--fw-muted);
+            font-size: 0.9rem;
+        }
+        .fw-flow-check {
+            margin-top: 6px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--fw-text_soft);
+        }
 
-        .fw-page-title { font-size: 1.7rem; font-weight: 800; color: #12291E; margin-bottom: 0; }
-        .fw-page-sub   { color: #6B7F74; font-size: 0.92rem; margin-top: 2px; margin-bottom: 10px; }
-        .fw-section    { font-size: 1.12rem; font-weight: 750; color: #1B3A2C; margin-top: 12px; }
+        .fw-page-title { font-size: 1.7rem; font-weight: 800; color: var(--fw-text); margin-bottom: 0; }
+        .fw-page-sub   { color: var(--fw-muted); font-size: 0.92rem; margin-top: 2px; margin-bottom: 10px; }
+        .fw-section    { font-size: 1.12rem; font-weight: 750; color: var(--fw-text); margin-top: 12px; }
 
         .fw-hero {
-            background: linear-gradient(135deg, #1B8A5A 0%, #0F5D3C 60%, #0B472E 100%);
+            background: linear-gradient(135deg, var(--fw-hero_from) 0%, var(--fw-hero_to) 100%);
             border-radius: 18px;
             padding: 26px 30px;
             color: #FFFFFF;
@@ -133,20 +154,23 @@ def inject_global_css() -> None:
         .fw-hero p  { margin: 6px 0 0 0; opacity: 0.92; }
 
         .fw-empty {
-            border: 1px dashed #BCD4C6;
+            border: 1px dashed var(--fw-border);
             border-radius: 14px;
-            background: #F4F9F6;
+            background: var(--fw-flow_step_bg);
             padding: 18px 20px;
-            color: #486257;
+            color: var(--fw-text_soft);
         }
         .fw-method {
-            background: #F7FAF8;
-            border: 1px solid #E3EBE6;
+            background: var(--fw-flow_step_bg);
+            border: 1px solid var(--fw-border);
             border-radius: 12px;
             padding: 12px 16px;
             font-size: 0.88rem;
-            color: #40584D;
+            color: var(--fw-text_soft);
         }
+        .fw-status-ok   { color: #1B8A5A; font-weight: 750; }
+        .fw-status-low  { color: #B26A00; font-weight: 750; }
+        .fw-status-crit { color: #C0392B; font-weight: 750; }
         </style>
         """,
         unsafe_allow_html=True,
@@ -195,36 +219,71 @@ def metric_card(label: str, value: str, sub: str = "", kind: str | None = None) 
 
 def food_flow(totals: dict) -> None:
     """
-    Render the prepared -> served -> consumed -> waste flow (spec section 7).
+    Render the single accounting flow defined in services/accounting.py:
+
+        prepared -> available for service -> served -> consumed,
+        with kitchen / serving / plate waste branching off at each step.
 
     `totals` is the period_totals() result. Values arrive as raw numbers and
     are formatted exactly once, here.
     """
-    steps = [
-        ("🍚", "Food prepared", totals["prepared"]),
-        ("🍽️", "Food served", totals["served"]),
-        ("✅", "Food consumed", totals["consumed"]),
-        ("♻️", "Food waste", totals["waste"]),
+    segments = [
+        ("step", "🍚", "Food prepared", totals["prepared"]),
+        ("branch", "↳", "Kitchen waste (before service)", totals["kitchen"]),
+        ("arrow", "", "", None),
+        ("step", "🥘", "Available for service", totals["available"]),
+        ("branch", "↳", "Serving waste (at the counter)", totals["serving"]),
+        ("arrow", "", "", None),
+        ("step", "🍽️", "Food served", totals["served"]),
+        ("branch", "↳", "Plate waste (left uneaten)", totals["plate"]),
+        ("arrow", "", "", None),
+        ("step", "✅", "Food consumed", totals["consumed"]),
     ]
     lines = []
-    for index, (icon, label, value) in enumerate(steps):
-        lines.append(
-            '<div class="fw-flow-step">'
-            f'<span class="fw-flow-icon">{icon}</span>'
-            f'<span class="fw-flow-label">{label}</span>'
-            f'<span class="fw-flow-value">{fmt.format_kg(value)}</span>'
-            "</div>"
-        )
-        if index < len(steps) - 1:
+    for kind, icon, label, value in segments:
+        if kind == "arrow":
             lines.append('<div class="fw-flow-arrow">↓</div>')
-    breakdown = (
-        '<div class="fw-flow-split">'
-        f'Kitchen waste {fmt.format_kg(totals["kitchen"])} + '
-        f'Serving waste {fmt.format_kg(totals["serving"])} + '
-        f'Plate waste {fmt.format_kg(totals["plate"])}'
-        "</div>"
+        elif kind == "branch":
+            lines.append(
+                '<div class="fw-flow-branch">'
+                f'<span>{icon}</span><span>{label}</span>'
+                f'<span class="fw-flow-value">{fmt.format_kg(value)}</span>'
+                "</div>"
+            )
+        else:
+            lines.append(
+                '<div class="fw-flow-step">'
+                f'<span class="fw-flow-icon">{icon}</span>'
+                f'<span class="fw-flow-label">{label}</span>'
+                f'<span class="fw-flow-value">{fmt.format_kg(value)}</span>'
+                "</div>"
+            )
+    waste_line = (
+        f"Total waste {fmt.format_kg(totals['waste'])} "
+        f"(kitchen + serving + plate) · Waste percentage {fmt.format_percentage(totals['waste_pct'])}"
     )
-    st.markdown('<div class="fw-flow">' + "".join(lines) + breakdown + "</div>", unsafe_allow_html=True)
+    if round(abs(totals["unaccounted"]), 2) == 0.0:
+        # The model balances by construction; the check makes the identity visible.
+        balanced_sum = totals["kitchen"] + totals["serving"] + totals["plate"] + totals["consumed"]
+        check_line = (
+            "Accounting check: "
+            f"kitchen {fmt.format_kg(totals['kitchen'])} + serving {fmt.format_kg(totals['serving'])} + "
+            f"plate {fmt.format_kg(totals['plate'])} + consumed {fmt.format_kg(totals['consumed'])} = "
+            f"{fmt.format_kg(balanced_sum)} ✓"
+        )
+    else:
+        check_line = (
+            f"Unaccounted / measurement difference: {fmt.format_kg(totals['unaccounted'])} — "
+            "the accounting does not balance; please review the recorded data."
+        )
+    st.markdown(
+        '<div class="fw-flow">'
+        + "".join(lines)
+        + f'<div class="fw-flow-split">{waste_line}</div>'
+        + f'<div class="fw-flow-check">{check_line}</div>'
+        + "</div>",
+        unsafe_allow_html=True,
+    )
 
 
 def empty_state(message: str) -> None:
@@ -242,8 +301,8 @@ def sidebar_brand() -> None:
     st.sidebar.markdown(
         """
         <div style="padding: 4px 0 10px 0;">
-            <div style="font-size: 1.35rem; font-weight: 800; color: #12291E;">🍽️ FoodWaste360</div>
-            <div style="font-size: 0.8rem; color: #6B7F74;">Measure. Understand. Reduce.</div>
+            <div style="font-size: 1.35rem; font-weight: 800; color: var(--fw-text);">🍽️ MealFlow360</div>
+            <div style="font-size: 0.8rem; color: var(--fw-muted);">Sell Smart. Cook Right. Waste Less.</div>
         </div>
         """,
         unsafe_allow_html=True,

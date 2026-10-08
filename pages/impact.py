@@ -1,5 +1,5 @@
 """
-FoodWaste360 - Impact Calculator page.
+MealFlow360 - Impact Calculator page.
 
 Visual impact dashboard (spec section 15): waste, estimated food value,
 estimated CO2e and the two water metrics - kept separate and never combined:
@@ -51,7 +51,7 @@ with row[1]:
                    "Separate metric — estimated from the washing calculator", "estimated")
 with row[2]:
     total_recorded = calculations.period_totals(start, end)
-    ui.metric_card("Waste rate", fmt.format_percentage(total_recorded["waste_pct"]),
+    ui.metric_card("Waste percentage", fmt.format_percentage(total_recorded["waste_pct"]),
                    "Total waste ÷ total prepared × 100", "calculated")
 
 st.caption(

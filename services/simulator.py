@@ -1,5 +1,5 @@
 """
-FoodWaste360 - What-If Simulator.
+MealFlow360 - What-If Simulator.
 
 Every result produced here is a SIMULATED value: a scenario estimate built from
 historical data, never a guaranteed saving. Each scenario returns:
@@ -97,7 +97,7 @@ def scenario_production_change(food_id: int, pct_change: float, start, end) -> t
         "assumptions": [
             f"Over the selected period, recorded waste for {food_name} was {fmt.format_percentage(waste_ratio * 100)} of "
             f"the prepared quantity ({fmt.format_kg(waste_current)} waste vs {fmt.format_kg(prepared_current)} prepared).",
-            "The scenario assumes the same waste ratio applies to the changed production quantity.",
+            "The scenario assumes the same waste percentage applies to the changed production quantity.",
             "Impact values reuse the documented factors stored for this food.",
             "Scenario estimate based on historical data - not a guaranteed saving.",
         ],
@@ -192,12 +192,12 @@ def scenario_customers_change(pct_change: float, start, end) -> tuple[pd.DataFra
 
 
 def scenario_target_waste_rate(target_pct: float, start, end) -> tuple[pd.DataFrame | None, dict]:
-    """Set a target waste rate (% of prepared food) and compare with the current period."""
+    """Set a target waste percentage (% of prepared food) and compare with the current period."""
     totals = calculations.period_totals(start, end)
     if totals["prepared"] <= 0 or totals["waste"] <= 0:
         return None, {"ok": False, "error": "No production and waste data was recorded in the selected period."}
     if target_pct < 0 or target_pct > 100:
-        return None, {"ok": False, "error": "The target waste rate must be between 0% and 100%."}
+        return None, {"ok": False, "error": "The target waste percentage must be between 0% and 100%."}
 
     prepared = totals["prepared"]
     waste_current = totals["waste"]
@@ -212,7 +212,7 @@ def scenario_target_waste_rate(target_pct: float, start, end) -> tuple[pd.DataFr
 
     rows = _comparison_rows([
         ("Total waste (kg)", waste_current, waste_new),
-        ("Waste rate (%)", totals["waste_pct"], target_pct),
+        ("Waste percentage (%)", totals["waste_pct"], target_pct),
         ("Estimated food value (INR)", current_impact["value"], simulated_impact["value"]),
         ("Estimated CO2e (kg CO2e)", current_impact["co2"], simulated_impact["co2"]),
         ("Estimated water footprint (L)", current_impact["water"], simulated_impact["water"]),
@@ -220,7 +220,7 @@ def scenario_target_waste_rate(target_pct: float, start, end) -> tuple[pd.DataFr
     meta = {
         "ok": True,
         "headline": (
-            f"A target waste rate of {fmt.format_percentage(target_pct)} would mean about {fmt.format_kg(waste_new)} of waste "
+            f"A target waste percentage of {fmt.format_percentage(target_pct)} would mean about {fmt.format_kg(waste_new)} of waste "
             f"versus {fmt.format_kg(waste_current)} recorded ({fmt.format_percentage(totals['waste_pct'])})."
         ),
         "assumptions": [

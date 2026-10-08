@@ -1,5 +1,5 @@
 """
-FoodWaste360 - Formatting helpers.
+MealFlow360 - Formatting helpers.
 
 All user-facing numbers are formatted here so units, thousands separators and
 rounding stay consistent across every page.

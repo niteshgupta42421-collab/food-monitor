@@ -1,5 +1,5 @@
 """
-FoodWaste360 - Historical Analytics page.
+MealFlow360 - Historical Analytics page.
 
 Interactive Plotly charts over the reporting period (spec section 19):
 food prepared trend, waste trend, waste %, kitchen/serving/plate waste,
@@ -64,11 +64,12 @@ with row[1]:
     ui.metric_card("Total prepared", fmt.format_kg(daily["prepared"].sum()), "Measured", "measured")
 with row[2]:
     ui.metric_card("Total waste", fmt.format_kg(filtered_daily["filtered_waste"].sum()),
-                   f"Category filter: {selected_type}", "measured")
+                   f"Category filter: {selected_type}", "calculated")
 with row[3]:
     avg_rate = (filtered_daily["filtered_waste"].sum() / daily["prepared"].sum() * 100
                 if daily["prepared"].sum() > 0 else 0.0)
-    ui.metric_card("Average waste rate", fmt.format_percentage(avg_rate), "Filtered waste ÷ prepared", "calculated")
+    ui.metric_card("Average waste percentage", fmt.format_percentage(avg_rate), "Filtered waste ÷ prepared",
+                   "calculated")
 
 col_a, col_b = st.columns(2)
 with col_a:
@@ -85,7 +86,7 @@ with col_b:
 col_a, col_b = st.columns(2)
 with col_a:
     st.plotly_chart(
-        charts.trend_lines(daily, {"waste_pct": "Waste rate (%)"}, "Waste rate trend", y_title="%"),
+        charts.trend_lines(daily, {"waste_pct": "Waste percentage (%)"}, "Waste percentage trend", y_title="%"),
         width="stretch",
     )
 with col_b:
@@ -142,17 +143,19 @@ with col_c:
 st.markdown("##### Daily detail")
 detail = daily.merge(daily_impact, on="date", how="left")
 export_table = detail.rename(columns={
-    "date": "Date", "prepared": "Prepared (kg)", "served": "Served (kg)", "consumed": "Consumed (kg)",
+    "date": "Date", "prepared": "Prepared (kg)", "available": "Available (kg)",
+    "served": "Served (kg)", "consumed": "Consumed (kg)",
     "kitchen": "Kitchen waste (kg)", "serving": "Serving waste (kg)", "plate": "Plate waste (kg)",
-    "waste": "Total waste (kg)", "waste_pct": "Waste rate (%)",
+    "waste": "Total waste (kg)", "waste_pct": "Waste percentage (%)",
     "value_lost": "Estimated value lost (₹)", "co2e": "Estimated CO2e (kg)",
     "water_litres": "Estimated water footprint (L)",
 })
 st.dataframe(
     export_table.style.format({
-        "Prepared (kg)": "{:,.2f}", "Served (kg)": "{:,.2f}", "Consumed (kg)": "{:,.2f}",
+        "Prepared (kg)": "{:,.2f}", "Available (kg)": "{:,.2f}",
+        "Served (kg)": "{:,.2f}", "Consumed (kg)": "{:,.2f}",
         "Kitchen waste (kg)": "{:,.2f}", "Serving waste (kg)": "{:,.2f}", "Plate waste (kg)": "{:,.2f}",
-        "Total waste (kg)": "{:,.2f}", "Waste rate (%)": "{:.2f}%",
+        "Total waste (kg)": "{:,.2f}", "Waste percentage (%)": "{:.2f}%",
         "Estimated value lost (₹)": "₹{:,.0f}", "Estimated CO2e (kg)": "{:,.2f}",
         "Estimated water footprint (L)": "{:,.0f}",
     }),
@@ -163,12 +166,13 @@ st.dataframe(
 st.download_button(
     "⬇️ Download daily table as CSV",
     data=export_table.to_csv(index=False).encode("utf-8"),
-    file_name=f"foodwaste360_analytics_{start}_{end}.csv",
+    file_name=f"mealflow360_analytics_{start}_{end}.csv",
     mime="text/csv",
 )
 
 st.caption(
-    "Prepared / served / consumed and waste quantities are measured values. "
-    "Waste rate, averages and the financial / environmental columns are calculated "
-    "or estimated from those measurements."
+    "Prepared and waste quantities are measured values. Available for service, served and consumed "
+    "are derived from prepared minus the recorded wastes (kitchen / serving / plate). Waste "
+    "percentage, averages and the financial / environmental columns are calculated or estimated "
+    "from those measurements."
 )

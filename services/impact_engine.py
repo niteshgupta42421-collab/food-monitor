@@ -1,5 +1,5 @@
 """
-FoodWaste360 - Impact engine (financial + environmental).
+MealFlow360 - Impact engine (financial + environmental).
 
 Formulas (spec sections 13, 14 and 15):
 
